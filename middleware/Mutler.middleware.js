@@ -1,12 +1,9 @@
 const multer = require("multer");
-const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const { S3Client } = require("@aws-sdk/client-s3");
 const multerS3 = require("multer-s3");
 require("dotenv").config();
 
 const bucketName = process.env.AWS_BUCKET_NAME;
-const region = process.env.AWS_REGION;
-const accesskey = process.env.AWS_ACCESS_KEY;
-const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
 
 const s3 = new S3Client({
   region: process.env.AWS_REGION,
@@ -15,6 +12,46 @@ const s3 = new S3Client({
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   },
 });
+
+const multerFilter = (req, file, cb) => {
+  const allowedMimeTypes = new Set([
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "text/plain",
+    "application/json",
+    "application/xml",
+    "text/xml",
+    "text/markdown",
+    "text/x-python",
+    "text/x-java-source",
+    "text/java",
+    "text/x-c",
+    "text/x-c++src",
+    "application/x-sh",
+    "text/x-shellscript",
+    "application/x-bash",
+    "text/csv",
+    "application/x-yaml",
+    "text/yaml",
+    "application/x-tex",
+    "text/x-tex",
+    "text/html",
+    "application/javascript",
+    "text/javascript",
+    "application/typescript",
+    "text/typescript",
+    "text/css",
+    "text/x-dockerfile",
+    "application/sql",
+    "text/sql",
+  ]);
+  if (allowedMimeTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Unsupported file type'), false);
+  }
+};
 
 const upload = multer({
   storage: multerS3({
@@ -27,8 +64,7 @@ const upload = multer({
       cb(null, file.originalname);
     },
   }),
+  multerFilter
 });
 
 module.exports = upload;
-// const storage = multer.memoryStorage();
-// module.exports = multer({ storage: storage });

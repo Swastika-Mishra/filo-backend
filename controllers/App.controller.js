@@ -44,7 +44,7 @@ exports.downloadFile = async (req, res, next) =>{
       Bucket: bucketName,
       Key: file,
     });
-    const url = await getSignedUrl(s3, command, { expiresIn: 3600 }); // Presigned URL
+    const url = await getSignedUrl(s3, command, { expiresIn: 3600 });
     res.json({ url });
   } catch (err){
     console.error("Failed to generate download URL", err.stack);
