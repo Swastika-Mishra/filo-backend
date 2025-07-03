@@ -1,4 +1,4 @@
-const { GetObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
+const { GetObjectCommand, DeleteObjectCommand, GetObjectTaggingCommand } = require("@aws-sdk/client-s3");
 const { S3Client, ListObjectsV2Command } = require("@aws-sdk/client-s3");
 require("dotenv").config();
 const {getSignedUrl} = require("@aws-sdk/s3-request-presigner");
@@ -25,10 +25,29 @@ exports.listDir = async (req, res, next) => {
   try {
     const command = new ListObjectsV2Command({Bucket: bucketName});
     const result = await s3.send(command);
-    const files = (result.Contents || []).map((item) => ({
-      filename: item.Key,
-      size : `${(item.Size / 1024).toFixed(2)} KB`,
-      lastModified : item.LastModified,
+    const contents = result.Contents || [];
+    const files = await Promise.all(contents.map(async (item) =>{
+      let malwareStatus = "unknown";
+      try{
+        const tagRes = await s3.send(new GetObjectTaggingCommand({
+          Bucket: bucketName,
+          Key: item.Key,
+        }));
+        const tagSet = tagRes.TagSet || [];
+        const tag = tagSet.find(t => t.Key === "GuardDutyMalwareScanStatus");
+
+        if(tag){
+          malwareStatus = tag.Value;
+        }
+      } catch (tagErr){
+        console.warn(`Failed to get tags for ${item.Key}:`, tagErr.message);
+      }
+      return {
+        filename: item.Key,
+        size : `${(item.Size / 1024).toFixed(2)} KB`,
+        lastModified : item.LastModified,
+        malwareStatus: malwareStatus,
+      };
     }));
     res.status(200).json(files);
   } catch (err) {
